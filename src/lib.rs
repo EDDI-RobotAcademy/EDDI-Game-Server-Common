@@ -1,8 +1,7 @@
+mod acceptor;
+
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::mpsc;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use std::io::{Read, Write};
 use std::thread;
 
@@ -52,63 +51,64 @@ async fn handle_connection(mut socket: TcpStream) {
 mod tests {
     use super::*;
     use tokio::net::TcpListener;
-    use tokio::sync::mpsc;
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
+    use std::net::TcpStream as StdTcpStream;
+    use std::io::{Read, Write};
     use std::thread;
     use std::time::Duration;
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn test_socket_pipeline_single_transaction() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_multiple_connections_concurrently() {
         println!("[TEST] main thread id: {:?}", thread::current().id());
 
-        let (tx, mut rx) = mpsc::channel::<TcpStream>(1);
+        let listener = TcpListener::bind("127.0.0.1:8082").await.unwrap();
 
-        // 서버 리스너 시작
-        let listener = TcpListener::bind("127.0.0.1:8081").await.unwrap();
-
-        let accept_handle = {
-            let tx = tx.clone();
-            tokio::spawn(async move {
-                println!("[ACCEPT_LOOP] start, thread_id: {:?}", thread::current().id());
+        // 서버 accept 루프는 tokio task로 동작
+        tokio::spawn(async move {
+            loop {
                 match listener.accept().await {
                     Ok((socket, _)) => {
-                        println!("[ACCEPT_LOOP] accepted 1 connection");
-                        let _ = tx.send(socket).await;
+                        println!("[ACCEPT] new connection");
+
+                        tokio::spawn(async move {
+                            handle_connection(socket).await;
+                        });
                     }
-                    Err(e) => eprintln!("[ACCEPT_LOOP] error: {}", e),
+                    Err(e) => {
+                        eprintln!("[ACCEPT ERROR] {}", e);
+                    }
                 }
-                println!("[ACCEPT_LOOP] finished");
-            })
-        };
-
-        // 워커 1개만 필요 (1건만 처리하므로)
-        let worker_handle = tokio::spawn(async move {
-            println!("[WORKER] start, thread_id: {:?}", thread::current().id());
-            if let Some(socket) = rx.recv().await {
-                println!("[WORKER] got connection");
-                handle_connection(socket).await;
-            }
-            println!("[WORKER] done");
-        });
-
-        // 클라이언트 접속 (std thread)
-        thread::spawn(|| {
-            thread::sleep(Duration::from_millis(300));
-            if let Ok(mut stream) = std::net::TcpStream::connect("127.0.0.1:8081") {
-                let msg = b"Hello server!";
-                stream.write_all(msg).unwrap();
-                let mut buf = [0; 128];
-                let n = stream.read(&mut buf).unwrap();
-                println!("[CLIENT] received: {}", String::from_utf8_lossy(&buf[..n]));
-            } else {
-                println!("[CLIENT] connection failed");
             }
         });
 
-        accept_handle.await.unwrap();
-        worker_handle.await.unwrap();
+        // 클라이언트 수
+        let client_count = 5;
+        let mut handles = vec![];
 
-        println!("[TEST] done");
+        // 클라이언트들 std::thread로 동시에 요청
+        for i in 0..client_count {
+            let handle = thread::spawn(move || {
+                thread::sleep(Duration::from_millis(200)); // 연결 시간 간격 조절
+                if let Ok(mut stream) = StdTcpStream::connect("127.0.0.1:8082") {
+                    let msg = format!("Hello from client {}", i);
+                    stream.write_all(msg.as_bytes()).unwrap();
+
+                    let mut buf = [0u8; 128];
+                    let n = stream.read(&mut buf).unwrap();
+                    let response = String::from_utf8_lossy(&buf[..n]);
+                    println!("[CLIENT {}] received: {}", i, response);
+                    assert_eq!(response, "Hello from server");
+                } else {
+                    panic!("[CLIENT {}] connection failed", i);
+                }
+            });
+            handles.push(handle);
+        }
+
+        // 모든 클라이언트 작업 완료 대기
+        for handle in handles {
+            handle.join().expect("Client thread failed");
+        }
+
+        println!("[TEST] all clients done");
     }
 }
