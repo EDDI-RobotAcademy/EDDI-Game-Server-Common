@@ -1,4 +1,7 @@
 mod acceptor;
+mod client_socket;
+mod server_socket;
+mod tokio_thread;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -60,7 +63,7 @@ mod tests {
     async fn test_multiple_connections_concurrently() {
         println!("[TEST] main thread id: {:?}", thread::current().id());
 
-        let listener = TcpListener::bind("127.0.0.1:8082").await.unwrap();
+        let listener = TcpListener::bind("127.0.0.1:7082").await.unwrap();
 
         // 서버 accept 루프는 tokio task로 동작
         tokio::spawn(async move {
@@ -88,7 +91,7 @@ mod tests {
         for i in 0..client_count {
             let handle = thread::spawn(move || {
                 thread::sleep(Duration::from_millis(200)); // 연결 시간 간격 조절
-                if let Ok(mut stream) = StdTcpStream::connect("127.0.0.1:8082") {
+                if let Ok(mut stream) = StdTcpStream::connect("127.0.0.1:7082") {
                     let msg = format!("Hello from client {}", i);
                     stream.write_all(msg.as_bytes()).unwrap();
 
