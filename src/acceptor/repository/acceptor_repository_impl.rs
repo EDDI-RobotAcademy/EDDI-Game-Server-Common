@@ -36,13 +36,13 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_acceptor_repository_impl_multithread_accepts_connection() {
         // given
-        let listener = TcpListener::bind("127.0.0.1:8082").await.unwrap();
+        let listener = TcpListener::bind("127.0.0.1:7082").await.unwrap();
         let repository: Arc<dyn AcceptorRepository> = Arc::new(AcceptorRepositoryImpl);
 
         // spawn client in std thread to simulate external connection
         thread::spawn(|| {
             thread::sleep(Duration::from_millis(300));
-            let _ = std::net::TcpStream::connect("127.0.0.1:8082").unwrap();
+            let _ = std::net::TcpStream::connect("127.0.0.1:7082").unwrap();
         });
 
         // when
@@ -55,7 +55,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_acceptor_repository_impl_handles_multiple_accepts() {
-        let listener = TcpListener::bind("127.0.0.1:8083").await.unwrap();
+        let listener = TcpListener::bind("127.0.0.1:7083").await.unwrap();
         let repository = Arc::new(AcceptorRepositoryImpl);
         let listener = Arc::new(listener);
 
