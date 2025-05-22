@@ -4,6 +4,9 @@ use async_trait::async_trait;
 use crate::acceptor::repository::acceptor_repository::AcceptorRepository;
 use crate::acceptor::repository::acceptor_repository_impl::AcceptorRepositoryImpl;
 use crate::acceptor::service::acceptor_service::AcceptorService;
+use crate::client_socket::entity::accepted_client_socket::AcceptedClientSocket;
+use crate::client_socket::repository::client_socket_repository::ClientSocketRepository;
+use crate::client_socket::repository::client_socket_repository_impl::ClientSocketRepositoryImpl;
 use crate::server_socket::repository::server_socket_repository::ServerSocketRepository;
 use crate::server_socket::repository::server_socket_repository_impl::ServerSocketRepositoryImpl;
 use crate::tokio_thread::repository::tokio_thread_repository::TokioThreadRepository;
@@ -36,6 +39,7 @@ pub struct AcceptorServiceImpl {
     thread_repo: Arc<dyn TokioThreadRepository>,
     socket_repo: Arc<dyn ServerSocketRepository>,
     acceptor_repo: Arc<dyn AcceptorRepository>,
+    client_socket_repo: Arc<dyn ClientSocketRepository>,
 }
 
 impl AcceptorServiceImpl {
@@ -43,11 +47,13 @@ impl AcceptorServiceImpl {
         let socket_repo = Arc::new(ServerSocketRepositoryImpl::new());
         let acceptor_repo = Arc::new(AcceptorRepositoryImpl::new());
         let thread_repo = Arc::new(TokioThreadRepositoryImpl::new());
+        let client_socket_repo = Arc::new(ClientSocketRepositoryImpl::new());
 
         Self {
             socket_repo,
             acceptor_repo,
             thread_repo,
+            client_socket_repo
         }
     }
 }
@@ -61,6 +67,7 @@ impl AcceptorService for AcceptorServiceImpl {
             println!("🚀 [SERVICE] Bind success, starting accept loop...");
 
             let this = self.clone();  // clone Arc<Self>
+            let client_socket_repo = self.client_socket_repo.clone();
 
             this.thread_repo.spawn(0, Box::pin({
                 let this = this.clone();  // async move 내부에서 새로 clone
@@ -71,8 +78,12 @@ impl AcceptorService for AcceptorServiceImpl {
                         if let Some(socket) = this.acceptor_repo.accept(&listener).await {
                             println!("🔌 [SERVICE] Connection accepted");
 
+                            let client_socket_repo = client_socket_repo.clone();
+
                             tokio::spawn(async move {
                                 println!("🎯 [SERVICE] Handling connection {:?}", socket);
+                                let client_socket = AcceptedClientSocket::new(socket);
+                                client_socket_repo.register(client_socket).await;
                             });
                         }
                     }

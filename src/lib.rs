@@ -2,6 +2,7 @@ mod acceptor;
 mod client_socket;
 mod server_socket;
 mod tokio_thread;
+mod transmitter;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
