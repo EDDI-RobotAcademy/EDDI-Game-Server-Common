@@ -5,6 +5,12 @@ use super::acceptor_repository::AcceptorRepository;
 
 pub struct AcceptorRepositoryImpl;
 
+impl AcceptorRepositoryImpl {
+    pub fn new() -> Self {
+        AcceptorRepositoryImpl
+    }
+}
+
 #[async_trait]
 impl AcceptorRepository for AcceptorRepositoryImpl {
     async fn accept(&self, listener: &TcpListener) -> Option<TcpStream> {

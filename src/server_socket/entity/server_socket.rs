@@ -13,6 +13,10 @@ impl ServerSocket {
     pub fn listener(&self) -> &TcpListener {
         &self.listener
     }
+
+    pub fn into_listener(self) -> TcpListener {
+        self.listener
+    }
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
-use std::future::Future;
+use futures::future::BoxFuture;
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait TokioThreadRepository {
-    async fn spawn(&self, id: usize, fut: impl Future<Output = ()> + Send + 'static);
+pub trait TokioThreadRepository: Send + Sync {
+    async fn spawn(&self, id: usize, fut: BoxFuture<'static, ()>);
 }

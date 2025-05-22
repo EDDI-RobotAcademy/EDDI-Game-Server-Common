@@ -6,6 +6,12 @@ use crate::server_socket::repository::server_socket_repository::ServerSocketRepo
 
 pub struct ServerSocketRepositoryImpl;
 
+impl ServerSocketRepositoryImpl {
+    pub fn new() -> Self {
+        ServerSocketRepositoryImpl
+    }
+}
+
 #[async_trait]
 impl ServerSocketRepository for ServerSocketRepositoryImpl {
     async fn bind(&self, addr: &str) -> Option<ServerSocket> {
