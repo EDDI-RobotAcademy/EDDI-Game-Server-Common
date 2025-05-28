@@ -5,6 +5,12 @@ use super::acceptor_repository::AcceptorRepository;
 
 pub struct AcceptorRepositoryImpl;
 
+impl AcceptorRepositoryImpl {
+    pub fn new() -> Self {
+        AcceptorRepositoryImpl
+    }
+}
+
 #[async_trait]
 impl AcceptorRepository for AcceptorRepositoryImpl {
     async fn accept(&self, listener: &TcpListener) -> Option<TcpStream> {
@@ -60,7 +66,7 @@ mod tests {
         let listener = Arc::new(listener);
 
         for i in 0..3 {
-            let port = 8083;
+            let port = 7083;
             std::thread::spawn(move || {
                 std::thread::sleep(std::time::Duration::from_millis(200 + i * 100));
                 let _ = std::net::TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();

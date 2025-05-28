@@ -137,3 +137,6 @@ Cargo.lock
 
 .DS_Store
 .idea
+
+# exclude .env
+.env
